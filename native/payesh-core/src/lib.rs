@@ -205,6 +205,24 @@ mod tests {
         let result = compare_hashes(&BTreeMap::new(), &trusted);
         assert_eq!(result[0].status, EvidenceStatus::Unavailable);
     }
+
+    #[test]
+    fn mismatched_hash_is_integrity_failure_evidence() {
+        let observed = BTreeMap::from([("boot".to_string(), "bb".to_string())]);
+        let trusted = BTreeMap::from([("boot".to_string(), "aa".to_string())]);
+        let result = compare_hashes(&observed, &trusted);
+        assert_eq!(result[0].status, EvidenceStatus::Failed);
+        assert!(!result[0].independently_verified);
+    }
+
+    #[test]
+    fn report_round_trips_through_json() {
+        let report = assess(vec![boot(EvidenceStatus::Verified, false)]);
+        let json = serde_json::to_string(&report).expect("serialize report");
+        let decoded: Report = serde_json::from_str(&json).expect("deserialize report");
+        assert_eq!(decoded.assessment, Assessment::Inconclusive);
+        assert_eq!(decoded.evidence_count, 1);
+    }
 }
 
 
