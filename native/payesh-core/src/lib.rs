@@ -43,7 +43,7 @@ pub enum Assessment {
 pub struct Report {
     pub schema_version: u32,
     pub assessment: Assessment,
-    pub confidence: &'static str,
+    pub confidence: String,
     pub evidence_count: usize,
     pub independent_evidence_count: usize,
     pub findings: Vec<String>,
