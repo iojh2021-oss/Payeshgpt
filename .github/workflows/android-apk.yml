@@ -36,10 +36,13 @@ jobs:
       - name: Test Rust security core
         run: cargo test --manifest-path native/payesh-core/Cargo.toml
       - uses: android-actions/setup-android@v3
-      - name: Install Android SDK components
-        run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018"
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+        with:
+          packages: |
+            platforms;android-35
+            build-tools;35.0.0
+            ndk;27.2.12479018
+      - name: Set Android NDK environment
+        run: echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
       - name: Install cargo-ndk
         run: cargo install cargo-ndk --locked
       - name: Build Rust library for Android ARM64
