@@ -55,7 +55,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          yes | sdkmanager --licenses >/dev/null
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
       - name: Install cargo-ndk
