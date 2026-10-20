@@ -95,7 +95,7 @@ pub fn assess(evidence: Vec<Evidence>) -> Report {
         Assessment::Suspicious => "needs investigation",
         Assessment::Inconclusive => "insufficient evidence",
         Assessment::NoSuspiciousEvidenceObserved => "limited to supplied evidence; not a clean bill of health",
-    };
+    }.to_string();
 
     Report {
         schema_version: 1,
