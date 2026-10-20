@@ -206,3 +206,43 @@ mod tests {
         assert_eq!(result[0].status, EvidenceStatus::Unavailable);
     }
 }
+
+
+// JNI entry point used by the Android app. The JSON input must be an array of
+// Evidence objects. Invalid input returns a structured error and never crashes
+// the Java/Kotlin caller.
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub extern "system" fn Java_com_payeshgpt_security_NativeBridge_assessJson(
+    mut env: jni::JNIEnv,
+    _class: jni::objects::JClass,
+    input: jni::objects::JString,
+) -> jni::sys::jstring {
+    let result = (|| -> Result<String, String> {
+        let raw: String = env
+            .get_string(&input)
+            .map_err(|e| format!("Could not read JSON input: {e}"))?
+            .into();
+        let evidence: Vec<Evidence> =
+            serde_json::from_str(&raw).map_err(|e| format!("Invalid evidence JSON: {e}"))?;
+        let report = assess(evidence);
+        serde_json::to_string(&report).map_err(|e| format!("Could not encode report: {e}"))
+    })();
+
+    let output = match result {
+        Ok(json) => json,
+        Err(message) => serde_json::json!({
+            "schema_version": 1,
+            "assessment": "inconclusive",
+            "confidence": "invalid input; no security conclusion",
+            "evidence_count": 0,
+            "independent_evidence_count": 0,
+            "findings": [message],
+            "evidence": []
+        }).to_string(),
+    };
+    match env.new_string(output) {
+        Ok(value) => value.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
