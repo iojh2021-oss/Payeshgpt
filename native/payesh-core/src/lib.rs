@@ -233,7 +233,7 @@ mod tests {
 #[no_mangle]
 pub extern "system" fn Java_com_payeshgpt_security_NativeBridge_assessJson(
     mut env: jni::JNIEnv,
-    _class: jni::objects::JClass,
+    _this: jni::objects::JObject,
     input: jni::objects::JString,
 ) -> jni::sys::jstring {
     let result = (|| -> Result<String, String> {
