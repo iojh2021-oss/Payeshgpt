@@ -48,7 +48,7 @@ jobs:
         with:
           targets: aarch64-linux-android
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
       - name: Install SDK and NDK
         shell: bash
         run: |
