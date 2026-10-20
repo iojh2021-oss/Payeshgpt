@@ -16,6 +16,7 @@ import org.json.JSONObject
 class MainActivity : Activity() {
     private lateinit var output: TextView
     private lateinit var summary: TextView
+    private val nativeBridge by lazy { NativeBridge() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,7 +95,7 @@ class MainActivity : Activity() {
     private fun buildReport() {
         try {
             // Empty evidence must remain inconclusive; never manufacture a clean result.
-            val report = JSONObject(NativeBridge.assessJson(JSONArray().toString()))
+            val report = JSONObject(nativeBridge.assessJson(JSONArray().toString()))
             output.text = report.toString(2)
             summary.text = "گزارش هستهٔ Rust ساخته شد؛ شواهدی برای نتیجه‌گیری امنیتی جمع‌آوری نشده است."
         } catch (e: UnsatisfiedLinkError) {
