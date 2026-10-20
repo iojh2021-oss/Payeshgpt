@@ -1,27 +1,47 @@
 # PayeshGPT — Android Security Lab
 
-PayeshGPT is being developed as a **defensive, read-only Android security assessment tool** for authorized devices and lab images.
+PayeshGPT is a defensive, read-only Android security assessment prototype for devices and lab images the operator is authorized to inspect.
 
-## Current repository status
-This repository was empty when the project was inspected. The Kotlin Android application supplied separately as `payesh.zip` has not yet been imported into this repository. Do not treat this scaffold as a completed APK or as proof that kernel rootkits can be detected.
+## Implemented in this repository
 
-## Engineering goals
-- Preserve useful Android-side app, permission, file-hash, and network-monitoring capabilities when the existing app is imported.
-- Add a native Rust analysis core for deterministic, testable integrity-evidence evaluation.
-- Keep device collection read-only and least-privilege by default.
-- Correlate multiple evidence sources instead of treating one property or scan result as definitive.
-- Clearly report **confirmed**, **suspicious**, **not assessed**, and **inconclusive** states.
-- Use Android Verified Boot / Key Attestation where supported, while distinguishing locally reported values from remotely validated evidence.
-- Add reproducible CI tests and an audit-friendly JSON report format.
+- Minimal Android application written in Kotlin with a Persian-language interface.
+- Launcher-app inventory using Android's package-visibility-limited APIs.
+- Rust evidence-correlation library with SHA-256 helpers, reference-hash comparison, conservative assessments, and JSON reports.
+- JNI entry point connecting the Android app to the Rust assessment engine.
+- CI workflows for Rust unit tests and an Android ARM64 debug APK build/artifact.
 
-## Important limits
-An ordinary Android application cannot freely read kernel memory, inspect every protected partition, or reliably detect every kernel-level implant. Native C/C++/Rust code does not bypass Android's app sandbox. Rooted lab builds can expose additional evidence, but a compromised kernel can falsify local observations. High-confidence validation should use trusted boot-chain signals and, where appropriate, evidence verified off-device.
+## Current limitations — important
 
-## Planned architecture
-- **Android app (Kotlin):** permissions, package inventory, user consent, UI, VPN-based network metadata, report export.
-- **Native engine (Rust):** parsers, hashing, integrity-evidence correlation, deterministic risk findings.
-- **Optional C/C++ adapters:** only where NDK interfaces or existing libraries justify them.
-- **Independent validation:** CI tests, known-good reference manifests, and supported hardware-backed attestation.
+- The separately supplied `payesh.zip` application has **not yet been merged** into this scaffold. The current Android UI is a minimal integration shell, not a complete import of that app.
+- The current screen lists launcher-visible apps; it does not yet scan APK contents, dynamically inspect every installed package, or monitor network traffic.
+- The report currently passes an empty evidence list to Rust. It must correctly remain **inconclusive**; it is not a malware scan result.
+- The Android build workflow has been committed, but its first green run and APK artifact must be checked in GitHub Actions before claiming the APK builds successfully.
+- No rootkit detection claim is made. A normal Android app cannot freely read kernel memory or protected partitions. Rust/C/C++ do not bypass the Android sandbox.
+- Hardware-backed attestation is not implemented. Verified Boot and Play Integrity/Key Attestation data must be validated and interpreted according to their documented trust model; locally reported values are not automatically independent proof.
 
-## Status
-Initial repository bootstrap only. Native engine, Android integration, and APK build validation are not complete yet.
+## Planned next milestones
+
+1. Import and review the original Android project from `payesh.zip`, preserving its useful UI and working features.
+2. Add tests for archive import, Android package metadata collection, hash-manifest provenance, and JNI integration.
+3. Implement permission/app metadata analysis with clear evidence sources and false-positive handling.
+4. Add optional user-consented network metadata monitoring only after its scope and privacy behavior are documented.
+5. Integrate supported platform integrity signals and separate local observations from independently validated evidence.
+6. Verify CI logs and distribute an APK only after the build and runtime smoke tests pass.
+
+## Build and test
+
+Rust tests:
+
+```sh
+cd native/payesh-core
+cargo test
+```
+
+Android ARM64 debug APK is built by the `Android APK` GitHub Actions workflow. The workflow uploads `app-debug.apk` as the `payeshgpt-debug-apk` artifact when successful.
+
+## Security semantics
+
+- Missing evidence means `inconclusive`, not safe.
+- A hash mismatch is a finding, not proof of malware or a rootkit.
+- A local observation is not automatically independent evidence.
+- A clean result only means the supplied evidence did not trigger a finding; it is not a guarantee that the device is uncompromised.
