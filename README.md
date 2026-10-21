@@ -1,47 +1,35 @@
-# PayeshGPT — Android Security Lab
+# Payesh Dashboard
 
-PayeshGPT is a defensive, read-only Android security assessment prototype for devices and lab images the operator is authorized to inspect.
+پنل وب فارسی و راست‌چین برای مشاهده گزارش اپ Payesh به تفکیک چند دستگاه. این مخزن از این نسخه فقط پنل و API همراه آن را نگه می‌دارد؛ پروژه اندرویدی قبلی از شاخه اصلی حذف می‌شود.
 
-## Implemented in this repository
+## وضعیت فعلی
+- رابط واکنش‌گرا با فهرست دستگاه‌ها و جزئیات جداگانه
+- بخش‌های وضعیت، برنامه‌ها، اسکن فایل‌ها و رویدادها
+- حالت نمونه با برچسب واضح؛ نمونه‌ها گزارش واقعی گوشی نیستند
+- تنظیم API و توکن از داخل مرورگر
+- API ابتدایی Rust برای دریافت گزارش و ارائه فهرست دستگاه‌ها
+- GitHub Pages فقط رابط استاتیک را میزبانی می‌کند و Rust server را اجرا نمی‌کند.
 
-- Minimal Android application written in Kotlin with a Persian-language interface.
-- Launcher-app inventory using Android's package-visibility-limited APIs.
-- Rust evidence-correlation library with SHA-256 helpers, reference-hash comparison, conservative assessments, and JSON reports.
-- JNI entry point connecting the Android app to the Rust assessment engine.
-- CI workflows for Rust unit tests and an Android ARM64 debug APK build/artifact.
+## انتشار پنل
+Workflow در `.github/workflows/pages.yml` سایت را منتشر می‌کند. در Settings → Pages منبع را روی GitHub Actions بگذارید.
 
-## Current limitations — important
-
-- The separately supplied `payesh.zip` application has **not yet been merged** into this scaffold. The current Android UI is a minimal integration shell, not a complete import of that app.
-- The current screen lists launcher-visible apps; it does not yet scan APK contents, dynamically inspect every installed package, or monitor network traffic.
-- The report currently passes an empty evidence list to Rust. It must correctly remain **inconclusive**; it is not a malware scan result.
-- The Android build workflow has been committed, but its first green run and APK artifact must be checked in GitHub Actions before claiming the APK builds successfully.
-- No rootkit detection claim is made. A normal Android app cannot freely read kernel memory or protected partitions. Rust/C/C++ do not bypass the Android sandbox.
-- Hardware-backed attestation is not implemented. Verified Boot and Play Integrity/Key Attestation data must be validated and interpreted according to their documented trust model; locally reported values are not automatically independent proof.
-
-## Planned next milestones
-
-1. Import and review the original Android project from `payesh.zip`, preserving its useful UI and working features.
-2. Add tests for archive import, Android package metadata collection, hash-manifest provenance, and JNI integration.
-3. Implement permission/app metadata analysis with clear evidence sources and false-positive handling.
-4. Add optional user-consented network metadata monitoring only after its scope and privacy behavior are documented.
-5. Integrate supported platform integrity signals and separate local observations from independently validated evidence.
-6. Verify CI logs and distribute an APK only after the build and runtime smoke tests pass.
-
-## Build and test
-
-Rust tests:
-
+## اجرای API
+با Rust stable:
 ```sh
-cd native/payesh-core
-cargo test
+cd server
+PAYESH_ADMIN_TOKEN='یک-توکن-طولانی-و-تصادفی' cargo run --release
 ```
+API روی پورت 8080 گوش می‌دهد. آن را پشت HTTPS reverse proxy قرار دهید و پورت خام را مستقیماً در اینترنت باز نگذارید. توکن را در مخزن قرار ندهید.
 
-Android ARM64 debug APK is built by the `Android APK` GitHub Actions workflow. The workflow uploads `app-debug.apk` as the `payeshgpt-debug-apk` artifact when successful.
+- `GET /health`
+- `GET /api/v1/devices` — نیازمند `Authorization: Bearer <PAYESH_ADMIN_TOKEN>`
+- `POST /api/v1/telemetry` — دریافت گزارش، نیازمند همان توکن در این نمونه اولیه
 
-## Security semantics
+نمونه JSON:
+```json
+{"id":"install-uuid","name":"Samsung A40","model":"SM-A405F","android":"Android 14","app_version":"Payesh 1.0","last_seen":"2026-10-21T19:37:39Z","online":true,"vpn":true,"guard":true,"db":"v7","score":88,"memory":"13 MB","threads":51,"tcp":14,"udp":7,"packages":614,"system_apps":181,"user_apps":433,"files_scanned":300,"events":0,"alerts":0,"hashes":3240,"certs":473,"domains":929,"apps":[],"scans":[],"logs":[]}
+```
+این قالب هنوز در اپ اصلی Payesh پیاده‌سازی نشده است. تا زمانی که اپ با شناسه نصب یکتا و احراز هویت امن گزارش نفرستد، پنل نمی‌تواند داده واقعی گوشی را استخراج کند.
 
-- Missing evidence means `inconclusive`, not safe.
-- A hash mismatch is a finding, not proof of malware or a rootkit.
-- A local observation is not automatically independent evidence.
-- A clean result only means the supplied evidence did not trigger a finding; it is not a guarantee that the device is uncompromised.
+## محدودیت امنیتی مهم
+نسخه فعلی داده‌ها را در حافظه فرایند نگه می‌دارد؛ با restart پاک می‌شوند. از یک توکن مشترک برای دریافت و مشاهده استفاده شده و این فقط نمونه اولیه است. قبل از استقرار عمومی، احراز هویت جداگانه هر دستگاه، ذخیره دائمی، اعتبارسنجی دقیق payload، محدودسازی نرخ و کنترل دسترسی باید تکمیل شود. محتوای خصوصی فایل‌ها را ارسال نکنید.
