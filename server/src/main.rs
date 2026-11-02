@@ -1,6 +1,6 @@
 use axum::{
     extract::{Path, Query, State},
-    http::{header, HeaderMap, Method, StatusCode},
+    http::{header, HeaderMap, HeaderValue, Method, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
@@ -13,10 +13,12 @@ use std::{
     sync::{Arc, RwLock},
     time::{SystemTime, UNIX_EPOCH},
 };
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
 const MAX_LIVE_BYTES: usize = 600_000; // one snapshot
 const MAX_LIVE_DEVICES: usize = 100;
+const MAX_LIVE_KEYS: usize = 24; // sections per device; stops a token holder from growing memory without limit
+const MAX_DEVICES: usize = 1000; // devices in the report list
 const WATCH_WINDOW_MS: u64 = 15_000; // a dashboard counts as "watching" if it polled within this window
 
 /// Per-device live state. Every top-level key (traffic, av, sys, ...) carries the seq at which it last changed,
@@ -145,6 +147,9 @@ async fn ingest(State(s): State<AppState>, h: HeaderMap, Json(d): Json<DeviceRep
     }
     match s.devices.write() {
         Ok(mut store) => {
+            if !store.contains_key(&d.id) && store.len() >= MAX_DEVICES {
+                return err(StatusCode::TOO_MANY_REQUESTS, "too_many_devices");
+            }
             store.insert(d.id.clone(), d);
             (StatusCode::OK, Json(serde_json::json!({"ok": true}))).into_response()
         }
@@ -180,7 +185,7 @@ async fn live_push(
             }
             let dev = m.entry(id.clone()).or_insert_with(|| Live { seq: 0, at: 0, keys: HashMap::new() });
             for (k, v) in obj {
-                if k.len() > 40 {
+                if k.len() > 40 || (!dev.keys.contains_key(&k) && dev.keys.len() >= MAX_LIVE_KEYS) {
                     continue;
                 }
                 dev.seq += 1;
@@ -261,8 +266,16 @@ async fn main() {
         live: Arc::new(RwLock::new(HashMap::new())),
         watch: Arc::new(RwLock::new(HashMap::new())),
     };
+    // PAYESH_ALLOWED_ORIGIN = comma-separated list of web origins allowed to call the API from a browser
+    // (for example https://iojh2021-oss.github.io). Not set = any origin (tokens are still required).
+    let origins: Vec<HeaderValue> = env::var("PAYESH_ALLOWED_ORIGIN")
+        .unwrap_or_default()
+        .split(',')
+        .filter_map(|o| HeaderValue::from_str(o.trim()).ok())
+        .collect();
+    let allow_origin = if origins.is_empty() { AllowOrigin::from(Any) } else { AllowOrigin::list(origins) };
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(allow_origin)
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE]);
     let app = Router::new()
@@ -273,8 +286,9 @@ async fn main() {
         .route("/api/v1/live/{id}/watch", get(live_watch))
         .layer(cors)
         .with_state(state);
-    let addr: SocketAddr = "0.0.0.0:8080".parse().unwrap();
-    let listener = tokio::net::TcpListener::bind(addr).await.expect("bind port 8080");
+    // behind Caddy the container listens on all interfaces but the port is not published to the internet
+    let addr: SocketAddr = env::var("PAYESH_BIND").unwrap_or_else(|_| "0.0.0.0:8080".to_string()).parse().expect("PAYESH_BIND must look like 0.0.0.0:8080");
+    let listener = tokio::net::TcpListener::bind(addr).await.expect("cannot bind the address");
     println!("Payesh dashboard API listening on {addr}");
     axum::serve(listener, app).await.expect("server error");
 }

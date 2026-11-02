@@ -1,0 +1,22 @@
+name: Server build
+on:
+  push:
+    paths:
+      - "server/**"
+      - ".github/workflows/server.yml"
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server
+      - name: Build
+        working-directory: server
+        run: cargo build --release
+      - name: Test
+        working-directory: server
+        run: cargo test

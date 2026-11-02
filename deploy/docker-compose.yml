@@ -1,0 +1,25 @@
+services:
+  server:
+    build: ../server
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "8080"          # only Caddy can reach it; the raw port is NOT published
+  caddy:
+    image: caddy:2      # always the newest 2.x (2.10+ has the post-quantum key exchange on by default)
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      - DASH_DOMAIN=${DASH_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - server
+volumes:
+  caddy_data:
+  caddy_config:

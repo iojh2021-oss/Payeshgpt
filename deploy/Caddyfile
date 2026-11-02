@@ -1,0 +1,14 @@
+# Caddy 2.10 or newer: automatic HTTPS (Let's Encrypt) and, by default, the hybrid post-quantum key exchange X25519MLKEM768.
+{$DASH_DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 1MB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+	reverse_proxy server:8080
+}
